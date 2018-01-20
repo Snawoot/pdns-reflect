@@ -10,7 +10,7 @@ def detect_af(addr):
                               socket.AF_UNSPEC,
                               0,
                               0,
-							  socket.AI_NUMERICHOST)[0][0]
+                              socket.AI_NUMERICHOST)[0][0]
 
 
 def write_response(resp):
@@ -34,15 +34,12 @@ class QueryHandler(object):
                              '604800',
                              '60'])
 
-
     def make_fail(self, _):
         return [['FAIL']]
-
 
     def handle_badcmd(self, _):
         return [['LOG', 'Malformed query'],
                 ['FAIL']]
-
 
     def handle_helo(self, q):
         try:
@@ -54,21 +51,17 @@ class QueryHandler(object):
         except:
             return self.make_fail(q)
 
-
     def make_a_resp(self, q):
         return [['DATA', q[1], 'IN', 'A', '0', '1', q[5]],
                 ['END']]
-
 
     def make_aaaa_resp(self, q):
         return [['DATA', q[1], 'IN', 'AAAA', '0', '1', q[5]],
                 ['END']]
 
-
     def make_soa_resp(self, q):
         return [['DATA', q[1], 'IN', 'SOA', '0', '1', self.soa],
                 ['END']]
-
 
     def handle_q(self, q):
         try:
@@ -86,13 +79,13 @@ class QueryHandler(object):
             elif af == socket.AF_INET6 and qtype in ('AAAA', 'ANY'):
                 return self.make_aaaa_resp(q)
             else:
-                return [['LOG', 'Bad address family %d of address %s' % (af, repr(remote_ip))],
+                return [['LOG', ('Bad address family %d of address %s' %
+                                 (af, repr(remote_ip)))],
                         ['FAIL']]
 
         except Exception as e:
             return [['LOG', 'Exception: %s' % str(e)],
                     ['FAIL']]
-
 
     def handle(self, q):
         return self.qtable.get(q[0], self.handle_badcmd)(q)
