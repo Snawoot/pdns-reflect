@@ -25,10 +25,23 @@ class QueryHandler(object):
             'HELO': self.handle_helo,
             'Q': self.handle_q,
         }
+        self.srv_fqdn = socket.getfqdn()
+        self.soa = ' '.join([self.srv_fqdn,
+                             'vladislav.vm-0.com',
+                             '1',
+                             '3600',
+                             '3600',
+                             '604800',
+                             '60'])
 
 
     def make_fail(self, _):
         return [['FAIL']]
+
+
+    def handle_badcmd(self, _):
+        return [['LOG', 'Malformed query'],
+                ['FAIL']]
 
 
     def handle_helo(self, q):
@@ -52,6 +65,11 @@ class QueryHandler(object):
                 ['END']]
 
 
+    def make_soa_resp(self, q):
+        return [['DATA', q[1], 'IN', 'SOA', '0', '1', self.soa],
+                ['END']]
+
+
     def handle_q(self, q):
         try:
             _, domain, qclass, qtype, ID, remote_ip = q
@@ -59,13 +77,17 @@ class QueryHandler(object):
                 return [['LOG', 'Only IN addresses are supported'],
                         ['FAIL']]
 
+            if qtype == 'SOA':
+                return self.make_soa_resp(q)
+
             af = detect_af(remote_ip)
             if af == socket.AF_INET and qtype in ('A', 'ANY'):
                 return self.make_a_resp(q)
             elif af == socket.AF_INET6 and qtype in ('AAAA', 'ANY'):
                 return self.make_aaaa_resp(q)
             else:
-                return self.make_fail(q)
+                return [['LOG', 'Bad address family %d of address %s' % (af, repr(remote_ip))],
+                        ['FAIL']]
 
         except Exception as e:
             return [['LOG', 'Exception: %s' % str(e)],
@@ -73,7 +95,7 @@ class QueryHandler(object):
 
 
     def handle(self, q):
-        return self.qtable.get(q[0], self.make_fail)(q)
+        return self.qtable.get(q[0], self.handle_badcmd)(q)
 
 
 def main():
